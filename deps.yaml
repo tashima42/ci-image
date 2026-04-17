@@ -43,3 +43,14 @@ tools:
       linux/arm64: "9e64a623dfc242990aa5d9b3f507111149c4282f66b68eaad1dc79eeb13b9ce5"
     dockerfiles:
       - "all"
+
+  - name: "cosign"
+    source: "https://github.com/sigstore/cosign"
+    version: "v3.0.6"
+    download_template: "{{ .Source }}/releases/download/{{ .Version }}/cosign-{{ .OS }}-{{ .Arch }}"
+    install_tool: "curl-bin"
+    checksums:
+      linux/amd64: "c956e5dfcac53d52bcf058360d579472f0c1d2d9b69f55209e256fe7783f4c74"
+      linux/arm64: "bedac92e8c3729864e13d4a17048007cfafa79d5deca993a43a90ffe018ef2b8"
+    dockerfiles:
+      - "all"

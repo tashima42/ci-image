@@ -73,6 +73,24 @@ RUN case "${ARCH}" in \
     install "${TMP_DIR}/${EXTRACT}" /usr/local/bin/ && \
     rm -rf "${TMP_DIR}"
 
+# cosign v3.0.6
+RUN case "${ARCH}" in \
+        amd64) CHECKSUM="c956e5dfcac53d52bcf058360d579472f0c1d2d9b69f55209e256fe7783f4c74" ;; \
+        arm64) CHECKSUM="bedac92e8c3729864e13d4a17048007cfafa79d5deca993a43a90ffe018ef2b8" ;; \
+        *) echo "Unsupported: ${ARCH}"; exit 1 ;; \
+    esac && \
+    export TMP_DIR=$(mktemp -d) && \
+    export TMP_FILE="${TMP_DIR}/cosign" && \
+    case "${ARCH}" in \
+        amd64) DOWNLOAD_URL="https://github.com/sigstore/cosign/releases/download/v3.0.6/cosign-linux-amd64" ;; \
+        arm64) DOWNLOAD_URL="https://github.com/sigstore/cosign/releases/download/v3.0.6/cosign-linux-arm64" ;; \
+    esac && \
+    curl -fsSL "${DOWNLOAD_URL}" > "${TMP_FILE}" && \
+    printf "%s  %s\n" "${CHECKSUM}" "${TMP_FILE}" > "${TMP_DIR}/checksum.sha256" && \
+    sha256sum -c "${TMP_DIR}/checksum.sha256" && \
+    install "${TMP_FILE}" /usr/local/bin/ && \
+    rm -rf "${TMP_DIR}"
+
 # Cleanup Go caches
 RUN go clean -cache -modcache
 
