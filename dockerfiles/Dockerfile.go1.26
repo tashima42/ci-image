@@ -1,0 +1,60 @@
+FROM registry.suse.com/bci/golang:1.26.2@sha256:0c1bfe51ea14f3e28b4730c725687331ce6aa24c61acea3b9735286789c873b9
+
+ARG TARGETARCH
+ENV ARCH=$TARGETARCH
+
+RUN zypper -n refresh  && \
+    zypper -n install     \
+        cosign            \
+        gawk              \
+        git-core          \
+        jq                \
+        wget           && \
+    zypper -n clean -a && \
+    rm -rf /var/log/{lastlog,tallylog,zypper.log,zypp/history,YaST2}
+
+# goreleaser v2.15.2
+RUN case "${ARCH}" in \
+        amd64) CHECKSUM="0ebdbf0353aba566b969dde746cc4e4806f96c27aa2f3971b229a9df7611fedc" ;; \
+        arm64) CHECKSUM="5db66761a98f6693161e49e1a95d28d2673a892ba60cb4a5e16736cafd41c4c9" ;; \
+        *) echo "Unsupported: ${ARCH}"; exit 1 ;; \
+    esac && \
+    export TMP_DIR=$(mktemp -d) && \
+    export TMP_FILE="${TMP_DIR}/goreleaser.tar.gz" && \
+    case "${ARCH}" in \
+        amd64) DOWNLOAD_URL="https://github.com/goreleaser/goreleaser/releases/download/v2.15.2/goreleaser_Linux_x86_64.tar.gz"; EXTRACT="goreleaser" ;; \
+        arm64) DOWNLOAD_URL="https://github.com/goreleaser/goreleaser/releases/download/v2.15.2/goreleaser_Linux_arm64.tar.gz"; EXTRACT="goreleaser" ;; \
+    esac && \
+    curl -fsSL "${DOWNLOAD_URL}" > "${TMP_FILE}" && \
+    printf "%s  %s\n" "${CHECKSUM}" "${TMP_FILE}" > "${TMP_DIR}/checksum.sha256" && \
+    sha256sum -c "${TMP_DIR}/checksum.sha256" && \
+    tar xzf "${TMP_FILE}" -C "${TMP_DIR}" && \
+    install "${TMP_DIR}/${EXTRACT}" /usr/local/bin/ && \
+    rm -rf "${TMP_DIR}"
+
+# golangci-lint v2.11.4
+RUN case "${ARCH}" in \
+        amd64) CHECKSUM="200c5b7503f67b59a6743ccf32133026c174e272b930ee79aa2aa6f37aca7ef1" ;; \
+        arm64) CHECKSUM="3bcfa2e6f3d32b2bf5cd75eaa876447507025e0303698633f722a05331988db4" ;; \
+        *) echo "Unsupported: ${ARCH}"; exit 1 ;; \
+    esac && \
+    export TMP_DIR=$(mktemp -d) && \
+    export TMP_FILE="${TMP_DIR}/golangci-lint.tar.gz" && \
+    case "${ARCH}" in \
+        amd64) DOWNLOAD_URL="https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golangci-lint-2.11.4-linux-amd64.tar.gz"; EXTRACT="golangci-lint-2.11.4-linux-amd64/golangci-lint" ;; \
+        arm64) DOWNLOAD_URL="https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golangci-lint-2.11.4-linux-arm64.tar.gz"; EXTRACT="golangci-lint-2.11.4-linux-arm64/golangci-lint" ;; \
+    esac && \
+    curl -fsSL "${DOWNLOAD_URL}" > "${TMP_FILE}" && \
+    printf "%s  %s\n" "${CHECKSUM}" "${TMP_FILE}" > "${TMP_DIR}/checksum.sha256" && \
+    sha256sum -c "${TMP_DIR}/checksum.sha256" && \
+    tar xzf "${TMP_FILE}" -C "${TMP_DIR}" && \
+    install "${TMP_DIR}/${EXTRACT}" /usr/local/bin/ && \
+    rm -rf "${TMP_DIR}"
+
+# govulncheck v1.2.0
+RUN go install golang.org/x/vuln/cmd/govulncheck@a8075323febce35764797d66a61fa9e19a8d9797
+
+# Cleanup Go caches
+RUN go clean -cache -modcache
+
+ENTRYPOINT ["/bin/bash"]

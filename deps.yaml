@@ -1,0 +1,33 @@
+tools:
+  - name: "goreleaser"
+    source: "https://github.com/goreleaser/goreleaser"
+    version: "v2.15.2"
+    download_template: "{{ .Source }}/releases/download/{{ .Version }}/goreleaser_{{ title .OS }}_{{ replace .Arch \"amd64\" \"x86_64\" }}.tar.gz"
+    extract: "goreleaser"
+    install_tool: "curl"
+    checksums:
+      linux/amd64: "0ebdbf0353aba566b969dde746cc4e4806f96c27aa2f3971b229a9df7611fedc"
+      linux/arm64: "5db66761a98f6693161e49e1a95d28d2673a892ba60cb4a5e16736cafd41c4c9"
+    dockerfiles:
+      - "all"
+
+  - name: "golangci-lint"
+    source: "https://github.com/golangci/golangci-lint"
+    version: "v2.11.4"
+    download_template: "{{ .Source }}/releases/download/{{ .Version }}/golangci-lint-{{ trimprefix .Version \"v\" }}-{{ .OS }}-{{ .Arch }}.tar.gz"
+    extract: "golangci-lint-{{ trimprefix .Version \"v\" }}-{{ .OS }}-{{ .Arch }}/golangci-lint"
+    install_tool: "curl"
+    checksums:
+      linux/amd64: "200c5b7503f67b59a6743ccf32133026c174e272b930ee79aa2aa6f37aca7ef1"
+      linux/arm64: "3bcfa2e6f3d32b2bf5cd75eaa876447507025e0303698633f722a05331988db4"
+    dockerfiles:
+      - "all"
+
+  - name: "govulncheck"
+    source: "https://pkg.go.dev/golang.org/x/vuln"
+    version: "v1.2.0"
+    version_commit: "a8075323febce35764797d66a61fa9e19a8d9797"
+    install_template: "golang.org/x/vuln/cmd/govulncheck@{{ .VersionCommit }}"
+    install_tool: "go-install"
+    dockerfiles:
+      - "go1.26"

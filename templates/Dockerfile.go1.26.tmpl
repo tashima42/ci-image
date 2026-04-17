@@ -1,0 +1,18 @@
+FROM registry.suse.com/bci/golang:1.26.2@sha256:0c1bfe51ea14f3e28b4730c725687331ce6aa24c61acea3b9735286789c873b9
+
+ARG TARGETARCH
+ENV ARCH=$TARGETARCH
+
+RUN zypper -n refresh  && \
+    zypper -n install     \
+        cosign            \
+        gawk              \
+        git-core          \
+        jq                \
+        wget           && \
+    zypper -n clean -a && \
+    rm -rf /var/log/{lastlog,tallylog,zypper.log,zypp/history,YaST2}
+
+### dependencies-template
+
+ENTRYPOINT ["/bin/bash"]
