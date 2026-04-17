@@ -88,4 +88,23 @@ RUN case "${ARCH}" in \
     install "${TMP_FILE}" /usr/local/bin/ && \
     rm -rf "${TMP_DIR}"
 
+# slsactl v0.1.30
+RUN case "${ARCH}" in \
+        amd64) CHECKSUM="7ed4750766c135ddcae788d194d7ff59a57c6debdc722fd1e52c06460218f10a" ;; \
+        arm64) CHECKSUM="bbbe66089135c82526677177c080f5ca4911ad1989712596338c5acdae4bb383" ;; \
+        *) echo "Unsupported: ${ARCH}"; exit 1 ;; \
+    esac && \
+    export TMP_DIR=$(mktemp -d) && \
+    export TMP_FILE="${TMP_DIR}/slsactl.tar.gz" && \
+    case "${ARCH}" in \
+        amd64) DOWNLOAD_URL="https://github.com/rancherlabs/slsactl/releases/download/v0.1.30/slsactl_0.1.30_linux_amd64.tar.gz"; EXTRACT="slsactl" ;; \
+        arm64) DOWNLOAD_URL="https://github.com/rancherlabs/slsactl/releases/download/v0.1.30/slsactl_0.1.30_linux_arm64.tar.gz"; EXTRACT="slsactl" ;; \
+    esac && \
+    curl -fsSL "${DOWNLOAD_URL}" > "${TMP_FILE}" && \
+    printf "%s  %s\n" "${CHECKSUM}" "${TMP_FILE}" > "${TMP_DIR}/checksum.sha256" && \
+    sha256sum -c "${TMP_DIR}/checksum.sha256" && \
+    tar xzf "${TMP_FILE}" -C "${TMP_DIR}" && \
+    install "${TMP_DIR}/${EXTRACT}" /usr/local/bin/ && \
+    rm -rf "${TMP_DIR}"
+
 ENTRYPOINT ["/bin/bash"]

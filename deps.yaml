@@ -54,3 +54,15 @@ tools:
       linux/arm64: "bedac92e8c3729864e13d4a17048007cfafa79d5deca993a43a90ffe018ef2b8"
     dockerfiles:
       - "all"
+
+  - name: "slsactl"
+    source: "https://github.com/rancherlabs/slsactl"
+    version: "v0.1.30"
+    download_template: "{{ .Source }}/releases/download/{{ .Version }}/slsactl_{{ trimprefix .Version \"v\" }}_{{ .OS }}_{{ .Arch }}.tar.gz"
+    extract: "slsactl"
+    install_tool: "curl"
+    checksums:
+      linux/amd64: "7ed4750766c135ddcae788d194d7ff59a57c6debdc722fd1e52c06460218f10a"
+      linux/arm64: "bbbe66089135c82526677177c080f5ca4911ad1989712596338c5acdae4bb383"
+    dockerfiles:
+      - "all"
