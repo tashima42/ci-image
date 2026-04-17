@@ -103,6 +103,22 @@ var installCmds = map[string]string{
     install "${TMP_DIR}/${EXTRACT}" /usr/local/bin/ && \
     rm -rf "${TMP_DIR}"`,
 
+	"curl-bin": `RUN {{ range $i, $p := .Platforms -}}
+{{ if eq $i 0 }}case "${ARCH}" in \
+{{ end }}        {{ $p.Arch }}) CHECKSUM="{{ $p.Checksum }}" ;; \
+{{ end }}        *) echo "Unsupported: ${ARCH}"; exit 1 ;; \
+    esac && \
+    export TMP_DIR=$(mktemp -d) && \
+    export TMP_FILE="${TMP_DIR}/{{ .Name }}" && \
+    case "${ARCH}" in \
+{{ range .Platforms }}        {{ .Arch }}) DOWNLOAD_URL="{{ .DownloadURL }}" ;; \
+{{ end }}    esac && \
+    curl -fsSL "${DOWNLOAD_URL}" > "${TMP_FILE}" && \
+    printf "%s  %s\n" "${CHECKSUM}" "${TMP_FILE}" > "${TMP_DIR}/checksum.sha256" && \
+    sha256sum -c "${TMP_DIR}/checksum.sha256" && \
+    install "${TMP_FILE}" /usr/local/bin/ && \
+    rm -rf "${TMP_DIR}"`,
+
 	"go-install": `RUN go install {{ .InstallPackage }}`,
 }
 
