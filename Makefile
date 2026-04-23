@@ -4,15 +4,14 @@ SHELL := /bin/bash
 
 DOCKERFILES_DIR  := dockerfiles
 
-# All Dockerfiles in the dockerfiles directory (auto-discovered).
-ALL_IMAGES := $(patsubst $(DOCKERFILES_DIR)/Dockerfile.%,%,$(wildcard $(DOCKERFILES_DIR)/Dockerfile.*))
+# Image names sourced from the images field of images-lock.yaml.
+ALL_IMAGES := $(shell awk '/^images:/{f=1;next} /^[a-zA-Z]/{f=0} f && /- /{print $$2}' images-lock.yaml)
 
-# Build a subset of images or all if none specified.
+# IMAGE must be set explicitly for build/push. Use build-all/push-all to target every image.
 # Usage:
-#   make build                          # builds all images
-#   make build IMAGES="go1.25"          # builds only go1.25
-#   make build IMAGES="go1.25 go1.26"   # builds go1.25 and go1.26
-IMAGES           ?= $(ALL_IMAGES)
+#   make build IMAGE=go1.25   # builds only go1.25
+#   make build-all             # builds every image
+IMAGE            ?=
 ORG              ?= rancher
 REPO             ?= $(ORG)/ci-image
 IMAGE_REPO 		 ?= ghcr.io/$(REPO)
@@ -27,9 +26,9 @@ _GIT_REMOTE  := $(shell git remote get-url origin 2>/dev/null | sed 's|git@githu
 _BUILD_DATE  := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 _SOURCE_URL   = $(if $(ORG),https://github.com/$(REPO),$(_GIT_REMOTE))
 
-.PHONY: all help test generate verify build push clean
+.PHONY: all help test generate verify build push build-all push-all clean
 
-all: test generate build ## Run tests, generate Dockerfiles, and build all images
+all: test generate build-all ## Run tests, generate Dockerfiles, and build all images
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -50,35 +49,43 @@ verify: ## Verify no uncommitted changes exist
 	fi
 
 define buildx
-	@if [ -z "$(IMAGES)" ]; then \
-		echo "Error: no images found. Run 'make generate' first."; \
+	@if [ -z "$(IMAGE)" ]; then \
+		echo "Error: IMAGE is not set. Specify IMAGE=<name> or use build-all/push-all."; \
 		exit 1; \
 	fi
-	@for img in $(IMAGES); do \
-		echo "==> $(1) $${img}:$(VERSION)"; \
-		docker buildx build \
-			--file "$(DOCKERFILES_DIR)/Dockerfile.$${img}" \
-			--platform "$(TARGET_PLATFORMS)" \
-			--provenance mode=max \
-			--sbom=true \
-			$(if $(NO_CACHE),--no-cache) \
-			--label "org.opencontainers.image.source=$(_SOURCE_URL)" \
-			--label "org.opencontainers.image.url=$(_SOURCE_URL)" \
-			--label "org.opencontainers.image.revision=$(_GIT_COMMIT)" \
-			--label "org.opencontainers.image.created=$(_BUILD_DATE)" \
-			--label "org.opencontainers.image.version=$(VERSION)" \
-			--tag "$(IMAGE_REPO)/$${img}:$(VERSION)" \
-			--tag "$(IMAGE_REPO)/$${img}:latest" \
-			$(2) \
-			. || exit 1; \
-	done
+	@echo "==> $(1) $(IMAGE):$(VERSION)"
+	@docker buildx build \
+		--file "$(DOCKERFILES_DIR)/Dockerfile.$(IMAGE)" \
+		--platform "$(TARGET_PLATFORMS)" \
+		--provenance mode=max \
+		--sbom=true \
+		$(if $(NO_CACHE),--no-cache) \
+		--label "org.opencontainers.image.source=$(_SOURCE_URL)" \
+		--label "org.opencontainers.image.url=$(_SOURCE_URL)" \
+		--label "org.opencontainers.image.revision=$(_GIT_COMMIT)" \
+		--label "org.opencontainers.image.created=$(_BUILD_DATE)" \
+		--label "org.opencontainers.image.version=$(VERSION)" \
+		--tag "$(IMAGE_REPO)/$(IMAGE):$(VERSION)" \
+		--tag "$(IMAGE_REPO)/$(IMAGE):latest" \
+		$(2) \
+		.
 endef
 
-build: ## Build container images for all target platforms
+build: ## Build a single image — requires IMAGE=<name>
 	$(call buildx,Building,)
 
-push: ## Build and push container images to the registry
+push: ## Build and push a single image — requires IMAGE=<name>
 	$(call buildx,Pushing,--push)
+
+build-all: ## Build all container images
+	@for img in $(ALL_IMAGES); do \
+		$(MAKE) build IMAGE="$${img}" || exit 1; \
+	done
+
+push-all: ## Build and push all container images
+	@for img in $(ALL_IMAGES); do \
+		$(MAKE) push IMAGE="$${img}" || exit 1; \
+	done
 
 clean: ## Remove generated Dockerfiles
 	rm -rf $(DOCKERFILES_DIR)
