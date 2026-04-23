@@ -104,7 +104,7 @@ jobs:
 
       - name: Build and push image
         shell: bash
-        run: make build NO_CACHE=1 ORG="${ORG}" IMAGE="${IMAGE}" VERSION="${VERSION}"
+        run: make push NO_CACHE=1 ORG="${ORG}" IMAGE="${IMAGE}" VERSION="${VERSION}"
         env:
           IMAGE: ${{ matrix.image }}
           VERSION: ${{ needs.setup.outputs.version }}
