@@ -26,21 +26,30 @@ _GIT_REMOTE  := $(shell git remote get-url origin 2>/dev/null | sed 's|git@githu
 _BUILD_DATE  := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 _SOURCE_URL   = $(if $(ORG),https://github.com/$(REPO),$(_GIT_REMOTE))
 
-.PHONY: all help test generate verify build push build-all push-all clean
+.PHONY: all help test generate verify build push build-all push-all clean setup
 
-all: test generate build-all ## Run tests, generate Dockerfiles, and build all images
+# Stamp file so setup only runs once per clone, not on every make invocation.
+.git/hooks/.setup-done: .githooks/pre-push
+	git config core.hooksPath .githooks
+	@touch $@
 
-help: ## Show this help message
+# Pull setup into every real target via this phony prerequisite.
+.PHONY: _setup
+_setup: .git/hooks/.setup-done
+
+all: _setup test generate build-all ## Run tests, generate Dockerfiles, and build all images
+
+help: _setup ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
 
-test: ## Run unit tests
+test: _setup ## Run unit tests
 	go test -v -count=1 ./...
 
-generate: ## Generate Dockerfiles from templates and deps.yaml
+generate: _setup ## Generate Dockerfiles from templates and deps.yaml
 	go run main.go
 
-verify: ## Verify no uncommitted changes exist
+verify: _setup ## Verify no uncommitted changes exist
 	@if [ -n "$$(git status --porcelain)" ]; then \
 		echo "Error: uncommitted changes detected:"; \
 		git status --porcelain; \
@@ -48,7 +57,7 @@ verify: ## Verify no uncommitted changes exist
 		exit 1; \
 	fi
 
-validate: generate verify
+validate: _setup generate verify
 
 define buildx
 	@if [ -z "$(IMAGE)" ]; then \
@@ -73,21 +82,23 @@ define buildx
 		.
 endef
 
-build: ## Build a single image — requires IMAGE=<name>
+build: _setup ## Build a single image — requires IMAGE=<name>
 	$(call buildx,Building,)
 
-push: ## Build and push a single image — requires IMAGE=<name>
+push: _setup ## Build and push a single image — requires IMAGE=<name>
 	$(call buildx,Pushing,--push)
 
-build-all: ## Build all container images
+build-all: _setup ## Build all container images
 	@for img in $(ALL_IMAGES); do \
 		$(MAKE) build IMAGE="$${img}" || exit 1; \
 	done
 
-push-all: ## Build and push all container images
+push-all: _setup ## Build and push all container images
 	@for img in $(ALL_IMAGES); do \
 		$(MAKE) push IMAGE="$${img}" || exit 1; \
 	done
 
-clean: ## Remove generated Dockerfiles
+clean: _setup ## Remove generated Dockerfiles
 	rm -rf $(DOCKERFILES_DIR)
+
+setup: .git/hooks/.setup-done ## Configure git to use the repo's hooks (.githooks/pre-push runs make validate)
