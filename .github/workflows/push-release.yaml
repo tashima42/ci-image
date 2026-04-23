@@ -32,7 +32,7 @@ jobs:
       - name: Install needed packages
         shell: bash
         run: |
-          zypper -n in docker git-core make
+          zypper -n in docker git-core make jq
 
       - name: Configure git
         shell: bash
